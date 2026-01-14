@@ -1,0 +1,18 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+lang.py
+hello.py
+finalapp.py
+excel_qa.py
+test_setup.py
+SETUP_POSTGRES.md
+QUICKSTART.md
+# Virtual environments
+.venv
+env
+

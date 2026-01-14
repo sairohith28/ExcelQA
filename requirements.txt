@@ -1,0 +1,15 @@
+pandas>=2.0.0
+openpyxl>=3.1.0
+google-generativeai>=0.3.0
+numpy>=1.24.0
+psycopg2-binary>=2.9.0
+langchain>=0.1.0
+langchain-google-genai>=1.0.0
+langchain-experimental>=0.0.47
+langchain-core>=0.1.0
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-dotenv>=1.0.0
+# boto3>=1.34.0  # S3 support - commented out for EC2 local storage
+python-multipart>=0.0.6
+requests>=2.31.0
