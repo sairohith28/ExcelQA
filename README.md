@@ -1,241 +1,283 @@
-# Excel QA System - RAG with PostgreSQL + Gemini Embeddings
+# Excel QA - AI-Powered CSV Query System
 
-Query your Excel files using natural language powered by Google Gemini with RAG (Retrieval Augmented Generation) approach.
-
-## Architecture
-
-This system uses a sophisticated RAG approach:
-
-1. **Data Storage**: Excel data → PostgreSQL database
-2. **Embeddings**: Generate embeddings for each row using Gemini's text-embedding-004 model
-3. **Vector Storage**: Store embeddings in PostgreSQL with pgvector extension
-4. **Query Processing**:
-   - User question → Generate embedding
-   - Retrieve top-k most similar rows using cosine similarity
-   - Pass relevant data + conversation history to Gemini LLM
-   - Generate accurate answer and 3 follow-up questions
+A lightweight, minimalistic chat interface to ask questions about your CSV data using Google Gemini AI.
 
 ## Features
 
-✅ **RAG Architecture** - Semantic search with embeddings + LLM generation  
-✅ **PostgreSQL Backend** - Persistent storage with pgvector for fast similarity search  
-✅ **Context-Aware** - Maintains conversation history for contextual understanding  
-✅ **3 Follow-up Questions** - Auto-generated after each query  
-✅ **Accurate Retrieval** - Finds most relevant data using embeddings  
-✅ **Scalable** - Works with 100-10,000+ rows efficiently  
+✅ **Simple Chat Interface** - Clean, modern UI for asking questions  
+✅ **AI-Powered Answers** - Uses Google Gemini for intelligent responses  
+✅ **Role-Based Access** - Admin can upload, all users can query  
+✅ **Single File Storage** - Simple file management, no database needed  
+✅ **Real-time Updates** - Upload new data instantly replaces old data  
+✅ **No Setup Complexity** - Just upload CSV and start asking questions  
 
-## Installation
+## Quick Start
 
-### 1. Install Python Dependencies
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Install PostgreSQL
-
-**macOS:**
-```bash
-brew install postgresql@15
-brew services start postgresql@15
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get update
-sudo apt-get install postgresql postgresql-contrib
-sudo systemctl start postgresql
-```
-
-**Windows:**
-```powershell
-# Download installer from: https://www.postgresql.org/download/windows/
-# Or use Chocolatey:
-choco install postgresql15
-
-# Or use Docker Desktop:
-docker run -d --name excelqa-postgres -e POSTGRES_DB=excelqa -e POSTGRES_PASSWORD=postgres -p 5432:5432 pgvector/pgvector:pg16
-```
-
-### 3. Install pgvector (Recommended for Performance)
+### 2. Configure Environment
 
 ```bash
-# macOS
-brew install pgvector
-
-# Ubuntu/Debian
-sudo apt install postgresql-15-pgvector
-
-# Or build from source: https://github.com/pgvector/pgvector#installation
+cp .env.example .env
 ```
 
-### 4. Create Database
+Edit `.env` and add your Gemini API key:
+```env
+GOOGLE_API_KEY=your_gemini_api_key_here
+```
+
+Get your API key from: https://makersuite.google.com/app/apikey
+
+### 3. Run the Application
 
 ```bash
-# Connect to PostgreSQL
-psql postgres
-
-# Create database
-CREATE DATABASE excelqa;
-
-# Enable pgvector extension
-\c excelqa
-CREATE EXTENSION vector;
-\q
+python main.py
 ```
 
-## Setup
-
-1. Get your Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-
-2. Edit `excel_qa.py` and update configuration:
-   ```python
-   GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE"
-   
-   DB_CONFIG = {
-       'host': 'localhost',
-       'port': 5432,
-       'database': 'excelqa',
-       'user': 'postgres',
-       'password': 'your_password'
-   }
-   ```
-
-3. Place your Excel file or let it create a sample:
-   ```python
-   EXCEL_FILE = "your_file.xlsx"
-   ```
-
-## Usage
-
-### Run with demo queries:
+Or with uvicorn:
 ```bash
-python excel_qa.py
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
-The system will:
-1. Load Excel data into PostgreSQL
-2. Generate embeddings for all rows (may take a few minutes)
-3. Run demo queries showing RAG in action
+### 4. Access the App
 
-### Enable interactive mode:
-Uncomment the interactive mode section in `excel_qa.py` (lines ~570-595)
+Open browser: `http://localhost:8000`
 
-```bash
-python excel_qa.py
-```
-
-Then ask questions like:
-- "How many employees are in Engineering?"
-- "Show me high performers with good ratings"
-- "What's their average salary?" (context-aware)
-- "Who has the most experience?"
+**Login Credentials:**
+- Admin: `admin` / `admin123`
+- User: `user` / `user123`
 
 ## How It Works
 
-### RAG Pipeline
+1. **Admin uploads CSV** → File saved to `data/current_data.csv`
+2. **Data loaded** → Pandas DataFrame created
+3. **LangChain Agent** → Created with Gemini AI model
+4. **Users ask questions** → Agent analyzes data and responds
+5. **New upload** → Replaces old file, all users get new data
 
-1. **Initialization**:
-   - Load Excel → PostgreSQL
-   - Generate embeddings for each row
-   - Store in pgvector for fast retrieval
-
-2. **Query Processing**:
-   ```
-   User Question
-        ↓
-   Generate Query Embedding (Gemini)
-        ↓
-   Similarity Search (PostgreSQL + pgvector)
-        ↓
-   Retrieve Top-K Relevant Rows
-        ↓
-   LLM Generation (Gemini + Context History)
-        ↓
-   Answer + Follow-up Questions
-   ```
-
-3. **Context Management**:
-   - Stores last 3 Q&A exchanges
-   - Understands references like "those", "that", "previous"
-
-## Why This Approach?
-
-### ✅ Advantages
-- **Semantic Search**: Finds relevant data even with different wording
-- **Scalable**: Handles 100-100K+ rows efficiently
-- **Context-Aware**: Maintains conversation flow
-- **Accurate**: Retrieves only relevant data for LLM
-- **Persistent**: Data stays in PostgreSQL for reuse
-
-### 🔧 When to Use
-- Medium to large datasets (100+ rows)
-- Need semantic understanding of queries
-- Want to reuse embeddings across sessions
-- Multiple users querying same dataset
-- Complex natural language queries
-
-### ⚡ Performance
-- **With pgvector**: Sub-second similarity search
-- **Without pgvector**: Falls back to in-memory computation (slower but works)
-
-## API
-
-```python
-# Initialize
-qa_system = ExcelQASystem(
-    excel_path="data.xlsx",
-    api_key="GEMINI_API_KEY",
-    db_config={
-        'host': 'localhost',
-        'port': 5432,
-        'database': 'excelqa',
-        'user': 'postgres',
-        'password': 'password'
-    }
-)
-
-# Ask questions with RAG
-response = qa_system.ask("Your question here", top_k=10)
-
-# Clear conversation history
-qa_system.clear_history()
-
-# Preview data from PostgreSQL
-qa_system.show_data_preview(n=5)
+### Data Flow
+```
+Admin Upload → data/current_data.csv → Pandas DataFrame → LangChain Agent → AI Response
 ```
 
-## Response Format
+## User Roles
 
-```python
-{
-    'success': True,
-    'question': "...",
-    'answer': "...",  # Generated by LLM based on relevant data
-    'relevant_data': [  # Top-k retrieved rows with similarity scores
-        {'row_id': 1, 'content': '...', 'similarity': 0.85},
-        ...
-    ],
-    'followup_questions': ["...", "...", "..."]
-}
+### Admin
+- **Upload CSV files** - Replace current data
+- **Ask questions** - Query the data via chat
+
+### Regular User  
+- **Ask questions** - Query the data via chat
+- Uses data uploaded by admin
+
+## Project Structure
+
 ```
+excelqa/
+├── main.py                 # FastAPI backend
+├── data/                   # Data storage (auto-created)
+│   └── current_data.csv   # Current data file (replaced on upload)
+├── static/                 # Frontend files
+│   ├── login.html         # Login page
+│   ├── index.html         # Chat interface
+│   ├── styles.css         # Styling
+│   └── script.js          # Frontend logic
+├── requirements.txt        # Python dependencies
+├── .env                    # Environment variables (create from .env.example)
+├── .env.example           # Example environment file
+├── README.md              # This file
+├── SIMPLE_SETUP.md        # Quick setup guide
+└── EC2_DEPLOYMENT.md      # Deployment guide
+
+```
+
+## Sample Questions
+
+- "How many rows are there?"
+- "What are the column names?"
+- "Show me the first 5 rows"
+- "What is the average of column X?"
+- "How many unique values in column Y?"
+- "Show me records where column Z > 100"
+- "What's the total sum of column A?"
+
+## API Endpoints
+
+### Public Endpoints
+- `GET /` - Login page
+- `POST /login` - Authentication
+- `GET /health` - Health check
+
+### Authenticated Endpoints
+- `GET /chat` - Chat interface
+- `POST /ask` - Ask questions (all users)
+- `POST /upload-csv` - Upload CSV (admin only)
+- `GET /data/info` - Dataset information
+
+## Deployment
+
+### Local Development
+```bash
+python main.py
+# Access at http://localhost:8000
+```
+
+### Production (systemd)
+```bash
+sudo nano /etc/systemd/system/excelqa.service
+```
+
+Add:
+```ini
+[Unit]
+Description=Excel QA Application
+After=network.target
+
+[Service]
+Type=simple
+User=your-username
+WorkingDirectory=/path/to/excelqa
+Environment="PATH=/path/to/excelqa/env/bin"
+ExecStart=/path/to/excelqa/env/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable excelqa
+sudo systemctl start excelqa
+```
+
+### Using Docker
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+Build and run:
+```bash
+docker build -t excelqa .
+docker run -d -p 8000:8000 -v $(pwd)/data:/app/data --env-file .env excelqa
+```
+
+## Tech Stack
+
+- **Backend**: FastAPI, Python 3.8+
+- **AI/ML**: Google Gemini 2.5 Flash, LangChain, LangChain Experimental
+- **Data Processing**: Pandas
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript
+- **Authentication**: Session-based (in-memory)
+
+## Requirements
+
+- Python 3.8 or higher
+- Google Gemini API key (free tier available)
+- ~10MB disk space for application
+- Additional space for CSV data files
+
+## Security Considerations
+
+⚠️ **For Production Deployment:**
+
+1. **Change default passwords** in `main.py`
+2. **Use proper authentication** - JWT tokens, OAuth, etc.
+3. **Enable HTTPS** - Use reverse proxy (nginx) with SSL
+4. **Database for users** - Replace in-memory USERS dict
+5. **Rate limiting** - Prevent API abuse
+6. **Input validation** - Sanitize file uploads
+7. **Environment variables** - Never commit .env file
+8. **Regular backups** - Backup data/ directory
+9. **Access control** - Implement proper authorization
+10. **Update dependencies** - Keep packages up to date
 
 ## Troubleshooting
 
-### pgvector not available
-The system will automatically fall back to JSON storage and in-memory similarity computation. It will still work but slower for large datasets.
+### Application won't start
+```bash
+# Check if port 8000 is available
+lsof -i :8000
 
-### PostgreSQL connection error
-- Ensure PostgreSQL is running:
-  - macOS: `brew services list`
-  - Linux: `sudo systemctl status postgresql`
-  - Windows: `Get-Service -Name postgresql*` (PowerShell)
-- Check credentials in DB_CONFIG
-- Verify database exists: `psql -l` (or `psql -U postgres -l` on Windows)
+# Check logs
+journalctl -u excelqa -f
 
-### Slow embedding generation
-- Gemini API has rate limits
-- ~1-2 seconds per row
-- For 100 rows: ~2-3 minutes initial setup
-- Embeddings are reused, so subsequent runs are instant
+# Verify environment
+python -c "from dotenv import load_dotenv; load_dotenv(); import os; print('API Key:', 'Set' if os.getenv('GOOGLE_API_KEY') else 'Missing')"
 ```
+
+### No data loaded
+- Admin must upload a CSV file first
+- Check `data/` directory exists and is writable
+- Verify CSV format is correct
+
+### Upload fails
+- Check file size limits
+- Verify CSV format (headers in first row after processing)
+- Check disk space: `df -h`
+
+### Questions not working
+- Ensure data is loaded (check status in UI)
+- Verify Gemini API key is valid
+- Check API quota/limits
+
+## CSV Format
+
+Your CSV should have headers. The code processes it as:
+```python
+df = pd.read_csv(file)
+df.columns = df.iloc[0]  # Second row becomes headers
+df = df.iloc[1:]          # Drop first row
+```
+
+Example:
+```csv
+Name,Age,City
+John,30,New York
+Jane,25,Los Angeles
+Bob,35,Chicago
+```
+
+## Contributing
+
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
+
+## License
+
+MIT License - feel free to use for personal or commercial projects.
+
+## Support
+
+- **Issues**: GitHub Issues
+- **Documentation**: See SIMPLE_SETUP.md and EC2_DEPLOYMENT.md
+- **API Docs**: http://localhost:8000/docs (when running)
+
+## Acknowledgments
+
+- Google Gemini AI for powerful language models
+- LangChain for agent framework
+- FastAPI for excellent web framework
+- Pandas for data processing
+
+---
+
+**Made with ❤️ for simple, effective data querying**

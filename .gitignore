@@ -12,7 +12,16 @@ excel_qa.py
 test_setup.py
 SETUP_POSTGRES.md
 QUICKSTART.md
+
 # Virtual environments
 .venv
 env
+
+# Data files
+data/
+uploads/
+*.csv
+
+# Environment variables
+.env
 
