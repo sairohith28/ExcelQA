@@ -249,4 +249,4 @@ if __name__ == "__main__":
     print("👤 Login credentials:")
     print("   Admin: admin / admin123")
     print("   User: user / user123")
-    uvicorn.run(app, host="0.0.0.0", port=8004)
+    uvicorn.run("main:app", host="0.0.0.0", port=8004, reload=True)
