@@ -12,9 +12,8 @@ document.getElementById('user-display').textContent = `${user} (${role})`;
 // Show appropriate panel based on role
 if (role === 'admin') {
     document.getElementById('admin-panel').style.display = 'block';
-} else {
-    document.getElementById('user-panel').style.display = 'block';
 }
+// Note: User panel removed - regular users just use chat
 
 // Logout functionality
 document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -67,52 +66,6 @@ document.getElementById('uploadBtn')?.addEventListener('click', async () => {
         alert('Upload failed: ' + error.message);
     }
 });
-
-// Admin: Load from URL
-document.getElementById('loadS3Btn')?.addEventListener('click', async () => {
-    await loadFromURL('s3Url');
-});
-
-// User: Load from URL
-document.getElementById('userLoadS3Btn')?.addEventListener('click', async () => {
-    await loadFromURL('userS3Url');
-});
-
-async function loadFromURL(inputId) {
-    const urlInput = document.getElementById(inputId);
-    const fileUrl = urlInput.value.trim();
-    
-    if (!fileUrl) {
-        alert('Please enter a file URL');
-        return;
-    }
-    
-    try {
-        addSystemMessage('Loading data from URL...');
-        
-        const response = await fetch('/load-from-url', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ file_url: fileUrl })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            addSystemMessage(`✓ Data loaded: ${data.rows} rows × ${data.columns} columns`);
-            loadDataInfo();
-            urlInput.value = '';
-        } else {
-            addSystemMessage('✗ Failed to load data from URL');
-            alert(data.detail || 'Failed to load data');
-        }
-    } catch (error) {
-        addSystemMessage('✗ Failed to load data from URL');
-        alert('Error: ' + error.message);
-    }
-}
 
 async function loadDataInfo() {
     try {
