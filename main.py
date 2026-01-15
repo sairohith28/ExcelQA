@@ -1,13 +1,12 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 from langchain_google_genai import ChatGoogleGenerativeAI
 import pandas as pd
 import os
-# import boto3  # S3 support - commented out for EC2 local storage
 from dotenv import load_dotenv
 import io
 from typing import Optional
@@ -30,9 +29,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files for serving HTML/CSS/JS
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
 # Request models
 class Question(BaseModel):
     question: str
@@ -42,7 +38,7 @@ class LoginRequest(BaseModel):
     password: str
 
 class FileURLRequest(BaseModel):
-    file_url: str  # HTTP/HTTPS URL to CSV file (e.g., http://ec2-ip/uploads/file.csv)
+    file_url: str
 
 # Response models
 class Answer(BaseModel):
@@ -66,23 +62,14 @@ df = None
 
 # Single data file that gets replaced on each upload
 DATA_FILE = Path("data/current_data.csv")
-DATA_FILE.parent.mkdir(exist_ok=True)  # Create data directory if it doesn't exist
+DATA_FILE.parent.mkdir(exist_ok=True)
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize the agent on startup"""
-    global agent, df  # , s3_client
+    global agent, df
     
     try:
-        # S3 initialization - commented out for EC2 local storage
-        # s3_client = boto3.client(
-        #     's3',
-        #     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-        #     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-        #     region_name=os.getenv('AWS_REGION', 'us-east-1')
-        # )
-        # print("✅ S3 client initialized")
-        
         print("✅ Using local file storage (single data file)")
         
         # Try to load the data file if exists
@@ -128,6 +115,9 @@ async def initialize_agent():
     
     print("✅ Agent initialized successfully!")
 
+# Serve static files - MOVED AFTER route definitions
+# This prevents it from catching all routes
+
 @app.get("/")
 async def root():
     """Serve the login page"""
@@ -151,14 +141,19 @@ async def health_check():
 @app.post("/login", response_model=LoginResponse)
 async def login(credentials: LoginRequest):
     """Simple login endpoint"""
+    print(f"Login attempt for user: {credentials.username}")
+    
     user = USERS.get(credentials.username)
     
     if not user:
+        print(f"User not found: {credentials.username}")
         return LoginResponse(success=False, message="User not found")
     
     if user["password"] != credentials.password:
+        print(f"Invalid password for user: {credentials.username}")
         return LoginResponse(success=False, message="Invalid password")
     
+    print(f"Login successful for user: {credentials.username} (role: {user['role']})")
     return LoginResponse(
         success=True,
         role=user["role"],
@@ -167,10 +162,7 @@ async def login(credentials: LoginRequest):
 
 @app.post("/upload-csv")
 async def upload_csv(file: UploadFile = File(...)):
-    """
-    Upload CSV file - replaces the current data file (Admin only)
-    All users will access this same data file
-    """
+    """Upload CSV file - replaces the current data file (Admin only)"""
     global df, agent
     
     if not file.filename.endswith('.csv'):
@@ -209,40 +201,30 @@ async def upload_csv(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
 
-# Load from URL endpoint - COMMENTED OUT (not needed for single file storage)
-# @app.post("/load-from-url")
-# async def load_from_url(request: FileURLRequest):
-#     """Load CSV from HTTP/HTTPS URL"""
-#     # This endpoint is no longer needed since we use a single data file
-#     pass
-
 @app.post("/ask", response_model=Answer)
 async def ask_question(question: Question):
-    """
-    Ask a question about the CSV data
-    
-    Args:
-        question: Question object containing the user's question
-        
-    Returns:
-        Answer object with the question and answer
-    """
+    """Ask a question about the CSV data"""
     if agent is None:
-        raise HTTPException(status_code=503, detail="Agent not initialized")
+        raise HTTPException(status_code=503, detail="Agent not initialized. Please upload a CSV file first.")
     
     if not question.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
     
     try:
+        print(f"Question received: {question.question}")
         # Invoke the agent with the question
         response = agent.invoke(question.question)
         
+        answer_text = response.get('output', 'No answer generated')
+        print(f"Answer: {answer_text}")
+        
         return Answer(
             question=question.question,
-            answer=response.get('output', 'No answer generated')
+            answer=answer_text
         )
         
     except Exception as e:
+        print(f"Error processing question: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
 
 @app.get("/data/info")
@@ -257,6 +239,14 @@ async def get_data_info():
         "column_names": list(df.columns)
     }
 
+# Mount static files AFTER all routes to prevent route conflicts
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    print("🚀 Starting Excel QA Server...")
+    print("📍 Access the application at: http://localhost:8000")
+    print("👤 Login credentials:")
+    print("   Admin: admin / admin123")
+    print("   User: user / user123")
+    uvicorn.run(app, host="0.0.0.0", port=8004)
