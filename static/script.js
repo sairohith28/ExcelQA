@@ -3,7 +3,7 @@ const user = sessionStorage.getItem('user');
 const role = sessionStorage.getItem('role');
 
 if (!user) {
-    window.location.href = '/excelqa/';
+    window.location.href = '';
 }
 
 // Display user info
@@ -18,7 +18,7 @@ if (role === 'admin') {
 // Logout functionality
 document.getElementById('logoutBtn').addEventListener('click', () => {
     sessionStorage.clear();
-    window.location.href = '/excelqa/';
+    window.location.href = '';
 });
 
 // Load data info on page load
@@ -41,7 +41,7 @@ document.getElementById('uploadBtn')?.addEventListener('click', async () => {
     statusSpan.textContent = 'Uploading...';
     
     try {
-        const response = await fetch('/excelqa/upload-csv', {
+        const response = await fetch('upload-csv', {
             method: 'POST',
             body: formData
         });
@@ -69,7 +69,7 @@ document.getElementById('uploadBtn')?.addEventListener('click', async () => {
 
 async function loadDataInfo() {
     try {
-        const response = await fetch('/excelqa/health');
+        const response = await fetch('health');
         const data = await response.json();
         
         document.getElementById('data-info').textContent = data.data_shape;
@@ -109,7 +109,7 @@ async function sendMessage() {
     const loadingId = addLoadingMessage();
     
     try {
-        const response = await fetch('/excelqa/ask', {
+        const response = await fetch('ask', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
