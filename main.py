@@ -18,7 +18,7 @@ import requests
 load_dotenv()
 
 # Initialize FastAPI app
-app = FastAPI(title="Excel QA API", description="Ask questions about your CSV data",root_path="/excelqa/")
+app = FastAPI(title="Excel QA API", description="Ask questions about your CSV data")
 
 # Add CORS middleware to allow frontend requests
 app.add_middleware(
